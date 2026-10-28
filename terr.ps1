@@ -1,20 +1,20 @@
 # ================= НАСТРОЙКИ =================
-# Перед запуском замените FILESERVER, USER_FOLDER и USERNAME, а также проверьте сетевые каталоги.
+
 # Логин пользователя для каталога export.dbf\users\<логин>
-$UserLogin = "USERNAME"
+$UserLogin = "u0419"
 
 # Имя каталога пользователя в исходном DFS-пути
-$ExchangeUser = "USER_FOLDER"
+$ExchangeUser = "Ilin"
 
 # Дату можно задать вручную (формат: "09.07.2026") или оставить $null — тогда возьмётся сегодняшняя
 $CustomDate = $null  # например: "09.07.2026" или $null
 
 # Базовые сетевые пути
-$BaseShare     = "\\FILESERVER\dfs\exchange\in\it2\$ExchangeUser"
-$DestArchive   = "\\FILESERVER\group\archive\2026"
-$DestDbf       = "\\FILESERVER\dfs\export\import.dbf\terror"
-$DestTerrorXml = "\\FILESERVER\dfs\export\work\TERROR\XML"
-$SourceUserFiles = "\\FILESERVER\dfs\export\export.dbf\users\$UserLogin"
+$BaseShare     = "\\domaincib.ru\dfs\exchange\in\it2\$ExchangeUser"
+$DestArchive   = "\\domaincib.ru\group\archive\2026"
+$DestDbf       = "\\domaincib.ru\dfs\export\import.dbf\terror"
+$DestTerrorXml = "\\domaincib.ru\dfs\export\work\TERROR\XML"
+$SourceUserFiles = "\\domaincib.ru\dfs\export\export.dbf\users\$UserLogin"
 # =============================================
 
 $ErrorActionPreference = "Stop"
