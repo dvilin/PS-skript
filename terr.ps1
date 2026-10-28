@@ -108,35 +108,65 @@ try {
     # 8. Копирование дополнительных файлов из terr_base
     Write-Host "`nШаг 8: Копирование дополнительных файлов из $TerrBase"
     $PassportPath = Join-Path $TerrBase "PASSPORT.zip"
-    $RtfSourcePath = Join-Path $TerrBase "terror_od_0.0.2026.rtf"
+    $RtfSourcePath = Join-Path $TerrBase "terror_od_27.10.2026.rtf"
     foreach ($SourcePath in @($PassportPath, $RtfSourcePath)) {
         if (-not (Test-Path -LiteralPath $SourcePath -PathType Leaf)) {
             throw "Не найден обязательный файл: $SourcePath"
         }
     }
-    Copy-Item -LiteralPath $PassportPath -Destination $DestArchive -Force
-    Write-Host "[OK] Скопирован PASSPORT.zip в $DestArchive" -ForegroundColor Green
+    Copy-Item -LiteralPath $PassportPath -Destination $SourceFolder -Force
+    Write-Host "[OK] Скопирован PASSPORT.zip в $SourceFolder" -ForegroundColor Green
 
-    # В RTF две даты заменяются на дату запуска, ещё две — на следующий день.
-    $RtfBytes = [System.IO.File]::ReadAllBytes($RtfSourcePath)
-    $RtfEncoding = [System.Text.Encoding]::GetEncoding(1251)
-    $RtfText = $RtfEncoding.GetString($RtfBytes)
-    $RtfDateMatches = [regex]::Matches($RtfText, '\d{2}\.\d{2}\.\d{4}')
-    if ($RtfDateMatches.Count -ne 4) {
-        throw "В RTF ожидалось ровно 4 даты формата дд.мм.гггг, найдено: $($RtfDateMatches.Count)"
+    # Word меняет видимый текст RTF, не повреждая его кодировку и форматирование.
+    if ($RtfSourcePath -notmatch 'terror_od_(\d{2}\.\d{2}\.\d{4})\.rtf$') {
+        throw "Не удалось извлечь исходную дату из имени RTF: $RtfSourcePath"
     }
+    $TemplateDateStr = $Matches[1]
+    $TemplateDate = [datetime]::ParseExact($TemplateDateStr, "dd.MM.yyyy", $null)
+    $TemplateNextDateStr = $TemplateDate.AddDays(1).ToString("dd.MM.yyyy")
     $NextDateStr = $Date.AddDays(1).ToString("dd.MM.yyyy")
-    $RtfDateIndex = 0
-    $RtfText = [regex]::Replace($RtfText, '\d{2}\.\d{2}\.\d{4}', {
-        param($Match)
-        $RtfDateIndex++
-        if ($RtfDateIndex -le 2) { return $DateStr }
-        return $NextDateStr
-    })
     $RtfDestName = "terror_od_$DateStr.rtf"
-    $RtfDestPath = Join-Path $DestArchive $RtfDestName
-    [System.IO.File]::WriteAllBytes($RtfDestPath, $RtfEncoding.GetBytes($RtfText))
-    Write-Host "[OK] RTF обновлён и сохранён как $RtfDestName" -ForegroundColor Green
+    $RtfDestPath = Join-Path $SourceFolder $RtfDestName
+
+    $Word = $null
+    $Document = $null
+    try {
+        $Word = New-Object -ComObject Word.Application
+        $Word.Visible = $false
+        $Word.DisplayAlerts = 0
+        $Document = $Word.Documents.Open($RtfSourcePath, $false, $true)
+
+        $Find = $Document.Content.Find
+        $Find.ClearFormatting()
+        $Find.Replacement.ClearFormatting()
+        $Find.Text = $TemplateDateStr
+        $Find.Replacement.Text = $DateStr
+        $Find.Forward = $true
+        $Find.Wrap = 1
+        $Find.Format = $false
+        $Find.MatchCase = $true
+        $Find.MatchWholeWord = $false
+        $Find.Execute($TemplateDateStr, $false, $false, $false, $false, $false, $true, 1, $false, $DateStr, 2) | Out-Null
+
+        $Find = $Document.Content.Find
+        $Find.ClearFormatting()
+        $Find.Replacement.ClearFormatting()
+        $Find.Text = $TemplateNextDateStr
+        $Find.Replacement.Text = $NextDateStr
+        $Find.Forward = $true
+        $Find.Wrap = 1
+        $Find.Format = $false
+        $Find.MatchCase = $true
+        $Find.MatchWholeWord = $false
+        $Find.Execute($TemplateNextDateStr, $false, $false, $false, $false, $false, $true, 1, $false, $NextDateStr, 2) | Out-Null
+
+        $Document.SaveAs2($RtfDestPath, 6)
+        Write-Host "[OK] RTF с обновлёнными датами сохранён как $RtfDestName в $SourceFolder" -ForegroundColor Green
+    }
+    finally {
+        if ($Document -ne $null) { $Document.Close(0) }
+        if ($Word -ne $null) { $Word.Quit() }
+    }
 
     # 9. Ожидание подтверждения готовности сводного отчёта
     Write-Host "`nОжидание подтверждения: «Сводный отчет готов?»"
